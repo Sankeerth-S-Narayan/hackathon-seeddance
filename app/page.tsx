@@ -357,7 +357,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
         <div className="flex items-center gap-2">
           <Logo size="sm" />
           <span className="text-gray-500 font-medium">RealEstate Dance</span>
-          <span className="text-gray-700">· AI Marketing Agent</span>
+          <span className="text-gray-700">· AI Real Estate Marketing Agent</span>
         </div>
         <p className="text-gray-700">*Based on NAR &amp; Inman video engagement research</p>
       </footer>
@@ -375,20 +375,40 @@ function Sidebar({
   onSelect: (h: HistoryEntry) => void
   onNew: () => void
 }) {
-  return (
-    <aside className="w-60 shrink-0 bg-[#08080e] border-r border-white/[0.06] flex flex-col h-full">
-      {/* Brand */}
-      <div className="px-4 py-4 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <Logo size="sm" />
-          <div>
-            <p className="font-bold text-white text-[13px] leading-none">RealEstate Dance</p>
-            <p className="text-[10px] text-gray-600 mt-0.5">AI Marketing Agent</p>
-          </div>
-        </div>
-        <button onClick={onNew} title="New video" className="w-7 h-7 rounded-lg bg-white/6 hover:bg-white/12 border border-white/8 text-white flex items-center justify-center text-base transition-colors">
+  const [collapsed, setCollapsed] = useState(false)
+
+  if (collapsed) {
+    return (
+      <aside className="w-12 shrink-0 bg-[#08080e] border-r border-white/[0.06] flex flex-col items-center py-3 gap-3 h-full transition-all">
+        <button onClick={() => setCollapsed(false)} title="Expand sidebar" className="w-7 h-7 rounded-lg bg-white/6 hover:bg-white/12 border border-white/8 text-gray-400 hover:text-white flex items-center justify-center transition-colors">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <button onClick={onNew} title="New video" className="w-7 h-7 rounded-lg bg-white/6 hover:bg-white/12 border border-white/8 text-gray-400 hover:text-white flex items-center justify-center text-base transition-colors">
           +
         </button>
+      </aside>
+    )
+  }
+
+  return (
+    <aside className="w-60 shrink-0 bg-[#08080e] border-r border-white/[0.06] flex flex-col h-full transition-all">
+      {/* Brand */}
+      <div className="px-4 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Logo size="sm" />
+          <div className="min-w-0">
+            <p className="font-bold text-white text-[13px] leading-none truncate">RealEstate Dance</p>
+            <p className="text-[10px] text-gray-600 mt-0.5">AI Real Estate Marketing Agent</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={onNew} title="New video" className="w-7 h-7 rounded-lg bg-white/6 hover:bg-white/12 border border-white/8 text-white flex items-center justify-center text-base transition-colors">
+            +
+          </button>
+          <button onClick={() => setCollapsed(true)} title="Collapse sidebar" className="w-7 h-7 rounded-lg bg-white/6 hover:bg-white/12 border border-white/8 text-gray-400 hover:text-white flex items-center justify-center transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+        </div>
       </div>
 
       {/* History */}
@@ -431,14 +451,6 @@ function Sidebar({
             </ul>
           </>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-white/[0.06]">
-        <div className="flex items-center gap-1.5 text-[10px] text-gray-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60 shrink-0" />
-          AI video · Cinematic reel · Instant
-        </div>
       </div>
     </aside>
   )
