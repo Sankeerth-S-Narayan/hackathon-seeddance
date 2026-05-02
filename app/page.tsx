@@ -33,7 +33,7 @@ const STEPS: { key: Stage; label: string; detail: string }[] = [
   {
     key: 'uploading',
     label: 'Analyzing the property',
-    detail: 'Extracting photos, features, and listing details to build your marketing brief.',
+    detail: 'Fetching listing details, photos and features — then re-hosting images for video production.',
   },
   {
     key: 'generating_prompt',
@@ -469,7 +469,7 @@ function StepProgress({ status, elapsedSec }: { status: Stage; elapsedSec: numbe
           <p className="font-bold text-white text-base">Your AI agent is working</p>
           <p className="text-xs text-gray-500 mt-0.5">
             {Math.floor(elapsedSec / 60)}:{String(elapsedSec % 60).padStart(2, '0')} elapsed
-            <span className="text-gray-700 ml-2">· typically 2–4 min</span>
+            <span className="text-gray-700 ml-2">· typically 4–6 min</span>
           </p>
         </div>
       </div>
@@ -737,13 +737,15 @@ function AppView() {
   function stopElapsed() { elapsedRef.current && clearInterval(elapsedRef.current) }
 
   async function handleSubmit(url: string) {
-    setIsGenerating(true); setError(null); setJob(null); setActiveJobId(null)
+    setIsGenerating(true); setError(null); setActiveJobId(null)
+    // Show progress immediately — scraping takes ~20s before the API responds
+    setJob({ status: 'uploading' })
     startElapsed()
     const res  = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) })
     const data = await res.json()
-    if (!res.ok) { setError(data.error); setIsGenerating(false); stopElapsed(); return }
+    if (!res.ok) { setError(data.error); setIsGenerating(false); setJob(null); stopElapsed(); return }
     setActiveJobId(data.jobId)
-    setJob({ status: 'uploading' })
+    setJob(prev => prev?.status === 'uploading' ? { status: 'uploading' } : prev)
   }
 
   useEffect(() => {
