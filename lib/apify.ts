@@ -20,7 +20,6 @@ export interface Listing {
 export async function scrapeZillow(url: string): Promise<Listing> {
   const client = new ApifyClient({ token: process.env.APIFY_API_KEY })
   const run = await client.actor('maxcopell/zillow-detail-scraper').call({
-    propertyStatus: 'FOR_SALE',
     startUrls: [{ url }],
   })
   const { items } = await client.dataset(run.defaultDatasetId).listItems()

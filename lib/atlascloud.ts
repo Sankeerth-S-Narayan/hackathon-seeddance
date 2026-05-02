@@ -84,24 +84,33 @@ export async function submitVideoJob(imageUrls: string[], prompt: string): Promi
   return submitWithSingleImage(atlasUrls[0], prompt)
 }
 
+// Single poll — returns video URL if done, null if still processing, throws on hard failure.
+// Called by the status route on each client poll so no long-running loop is needed.
+export async function checkAtlasOnce(predictionId: string): Promise<string | null> {
+  const res = await fetch(`${ATLAS_BASE}/api/v1/model/prediction/${predictionId}`, {
+    headers: { 'Authorization': `Bearer ${KEY()}` },
+  })
+  if (!res.ok) throw new Error(`Atlas poll failed: ${res.status}`)
+  const { data } = await res.json()
+  const status = (data?.status ?? '').toLowerCase()
+
+  if (status === 'completed') {
+    const url = data?.outputs?.[0]
+    if (!url) throw new Error(`Atlas completed but no video URL: ${JSON.stringify(data)}`)
+    return url
+  }
+  if (['failed', 'error', 'cancelled'].includes(status)) {
+    throw new Error(`Atlas job failed: ${data?.error ?? status}`)
+  }
+  return null  // still processing
+}
+
+// Legacy full-poll loop kept for local dev use only
 export async function pollVideoJob(predictionId: string, timeoutMs = 600_000): Promise<string> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    const res = await fetch(`${ATLAS_BASE}/api/v1/model/prediction/${predictionId}`, {
-      headers: { 'Authorization': `Bearer ${KEY()}` },
-    })
-    if (!res.ok) throw new Error(`Atlas poll failed: ${res.status}`)
-    const { data } = await res.json()
-    const status = (data?.status ?? '').toLowerCase()
-
-    if (status === 'completed') {
-      const url = data?.outputs?.[0]
-      if (!url) throw new Error(`Atlas completed but no video URL: ${JSON.stringify(data)}`)
-      return url
-    }
-    if (['failed', 'error', 'cancelled'].includes(status)) {
-      throw new Error(`Atlas job failed: ${data?.error ?? status}`)
-    }
+    const url = await checkAtlasOnce(predictionId)
+    if (url) return url
     await new Promise(r => setTimeout(r, 5000))
   }
   throw new Error(`Atlas job timed out after ${timeoutMs / 1000}s`)

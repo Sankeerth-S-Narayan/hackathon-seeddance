@@ -2,9 +2,9 @@ import { scrapeZillow } from '@/lib/apify'
 import { createListing, createJob, updateJob, updateListing } from '@/lib/butterbase'
 import { uploadImageFromUrl } from '@/lib/upload'
 import { generateSeedancePrompt } from '@/lib/easyrouter'
-import { submitVideoJob, pollVideoJob } from '@/lib/atlascloud'
+import { submitVideoJob } from '@/lib/atlascloud'
 
-export const maxDuration = 300  // 5 min max for Butterbase/Vercel
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   const { url } = await req.json()
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Please provide a valid Zillow URL' }, { status: 400 })
   }
 
-  // Step 1: Scrape listing
+  // Step 1: Scrape listing (~15-25s)
   let listing
   try {
     listing = await scrapeZillow(url)
@@ -24,44 +24,30 @@ export async function POST(req: Request) {
   const listingId = await createListing(listing, url)
   const jobId = await createJob(listingId)
 
-  // Step 3: Kick off background pipeline (don't await)
-  runPipeline(jobId, listingId, listing).catch(console.error)
-
-  return Response.json({ jobId, listingId, address: listing.address })
-}
-
-async function runPipeline(
-  jobId: string,
-  listingId: string,
-  listing: Awaited<ReturnType<typeof scrapeZillow>>
-) {
   try {
     await updateJob(jobId, { status: 'uploading' })
 
-    // Step 4: Re-host Zillow images via litterbox (hotlink protection bypass)
-    const publicUrls: string[] = []
-    for (let i = 0; i < listing.images.length; i++) {
-      const url = await uploadImageFromUrl(listing.images[i], `${jobId}_${i}.jpg`)
-      publicUrls.push(url)
-    }
+    // Step 3: Upload images in PARALLEL to keep total time within 60s
+    if (!listing.images.length) throw new Error('No photos found for this listing')
+    const publicUrls = await Promise.all(
+      listing.images.map((img, i) => uploadImageFromUrl(img, `${jobId}_${i}.jpg`))
+    )
 
     await updateJob(jobId, { status: 'generating_prompt' })
 
-    // Step 5: EasyRouter → Seedance prompt
+    // Step 4: Generate Seedance prompt via EasyRouter/Claude (~3-5s)
     const prompt = await generateSeedancePrompt(listing, publicUrls.length)
     await updateListing(listingId, { seedance_prompt: prompt })
+
     await updateJob(jobId, { status: 'generating_video' })
 
-    // Step 6: Atlas Cloud → video
+    // Step 5: Submit to Atlas (no polling — status route handles that)
     const atlasId = await submitVideoJob(publicUrls, prompt)
     await updateJob(jobId, { atlas_id: atlasId })
 
-    // Step 7: Poll until done
-    const videoUrl = await pollVideoJob(atlasId)
-    await updateListing(listingId, { video_url: videoUrl })
-    await updateJob(jobId, { status: 'succeeded' })
-
   } catch (e: any) {
-    await updateJob(jobId, { status: 'failed', error: e.message })
+    await updateJob(jobId, { status: 'failed', error: e.message }).catch(() => {})
   }
+
+  return Response.json({ jobId, listingId, address: listing.address })
 }
