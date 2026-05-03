@@ -78,6 +78,22 @@ function IcoVideo()  { return <svg className="w-4 h-4" fill="none" stroke="curre
 function IcoBed()    { return <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg> }
 function IcoDown()   { return <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> }
 function IcoLink()   { return <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg> }
+function IcoSpeakerOn() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5L6 9H2v6h4l5 4V5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" />
+    </svg>
+  )
+}
+function IcoSpeakerOff() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5L6 9H2v6h4l5 4V5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M23 9l-6 6M17 9l6 6" />
+    </svg>
+  )
+}
 
 // ── Logo mark ─────────────────────────────────────────────────────────────────
 
@@ -89,6 +105,98 @@ function Logo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
       <svg className={`${t} text-white`} fill="currentColor" viewBox="0 0 24 24">
         <path d="M12 3C8.5 3 5.5 5.5 5.5 9c0 3 2 5.5 4.5 7.5L12 18l2-1.5C16.5 14.5 18.5 12 18.5 9 18.5 5.5 15.5 3 12 3z"/>
       </svg>
+    </div>
+  )
+}
+
+// ── Video: autoplay muted, sound via one button only (no native controls / fullscreen)
+
+function VideoSoundOnly({
+  src,
+  videoClassName = 'w-full aspect-video object-cover block bg-black',
+}: {
+  src: string
+  videoClassName?: string
+}) {
+  const ref = useRef<HTMLVideoElement>(null)
+  const [muted, setMuted] = useState(true)
+
+  return (
+    <div className="relative">
+      <video
+        ref={ref}
+        src={src}
+        autoPlay
+        loop
+        playsInline
+        muted={muted}
+        disablePictureInPicture
+        className={videoClassName}
+        onVolumeChange={() => setMuted(ref.current?.muted ?? true)}
+      />
+      <button
+        type="button"
+        aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
+        onClick={() => {
+          const v = ref.current
+          if (!v) return
+          v.muted = !v.muted
+          setMuted(v.muted)
+          if (!v.muted) void v.play()
+        }}
+        className="absolute bottom-3 right-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/80 border border-white/15 text-white backdrop-blur-sm hover:bg-black/95 transition-colors shadow-lg"
+      >
+        {muted ? <IcoSpeakerOff /> : <IcoSpeakerOn />}
+      </button>
+    </div>
+  )
+}
+
+// ── Hero: newest DB demo (avoids stale hardcoded job id) ─────────────────────
+
+interface HeroFeatured {
+  jobId: string
+}
+
+function LandingHeroShowcase() {
+  const [hero, setHero] = useState<HeroFeatured | null | undefined>(undefined)
+
+  useEffect(() => {
+    fetch('/api/featured-hero')
+      .then(r => r.json())
+      .then((d: HeroFeatured | null) => setHero(d ?? null))
+      .catch(() => setHero(null))
+  }, [])
+
+  if (hero === undefined) {
+    return (
+      <div className="relative max-w-5xl mx-auto animate-fade-in px-2" style={{ animationDelay: '0.2s' }}>
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] aspect-video max-h-[420px] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-gray-500">
+            <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-rose-400 animate-spin" />
+            <p className="text-sm">Loading featured property…</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hero) {
+    return (
+      <div className="relative max-w-3xl mx-auto rounded-3xl border border-white/10 bg-white/[0.03] p-12 text-center text-gray-500 text-sm">
+        No featured demo in database yet. Generate a video in the app to populate this section.
+      </div>
+    )
+  }
+
+  const videoSrc = `/api/video/${hero.jobId}`
+
+  return (
+    <div className="relative max-w-3xl mx-auto animate-fade-in px-2" style={{ animationDelay: '0.2s' }}>
+      <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.75)] bg-black">
+        <VideoSoundOnly src={videoSrc} videoClassName="w-full aspect-video object-cover block" />
+      </div>
+      <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-rose-600/12 blur-[60px] rounded-full pointer-events-none" />
     </div>
   )
 }
@@ -154,20 +262,7 @@ function LandingPage({ onStart }: { onStart: () => void }) {
             </a>
           </div>
 
-          {/* Real sample video */}
-          <div className="relative max-w-3xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.75)] bg-black">
-              <video
-                src="/api/video/2ef4862f-072b-4129-9959-ccb72b6c7322"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full aspect-video object-cover block"
-              />
-            </div>
-            <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-rose-600/12 blur-[60px] rounded-full pointer-events-none" />
-          </div>
+          <LandingHeroShowcase />
         </div>
       </section>
 
@@ -550,7 +645,7 @@ function VideoResult({ jobId, job }: { jobId: string; job: JobStatus }) {
         {/* Left: video */}
         <div className="flex flex-col gap-3">
           <div className="rounded-2xl overflow-hidden border border-white/8 shadow-2xl shadow-black/60 bg-black">
-            <video src={proxyUrl} controls autoPlay loop playsInline className="w-full aspect-video bg-black block" />
+            <VideoSoundOnly src={proxyUrl} videoClassName="w-full aspect-video bg-black block" />
           </div>
 
           {/* Action buttons */}
