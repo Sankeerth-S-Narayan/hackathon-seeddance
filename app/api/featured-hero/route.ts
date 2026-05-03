@@ -26,7 +26,10 @@ export async function GET(req: Request) {
         const addr = (listing?.address ?? '').toLowerCase()
         if (!addr.includes(match)) return null
         if (!listing?.video_url) return null
-        return { jobId: job.id as string }
+        return {
+          jobId: job.id as string,
+          createdAt: (job.created_at ?? job.updated_at ?? '') as string,
+        }
       } catch {
         return null
       }
